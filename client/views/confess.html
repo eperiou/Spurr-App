@@ -72,7 +72,7 @@
 
   <div id="confessional" class="message" ng-style="styleOut">
     <div class="upper" ng-style="styleIn">
-      <ul class="msgText">
+      <ul onclick="pickUp()" class="msgText">
         <li ng-show="showLocation" class="left">{{ secret.location }}</li>
         <li ng-show="showDate" class="right">{{ secret.date }}</li>
       </ul>

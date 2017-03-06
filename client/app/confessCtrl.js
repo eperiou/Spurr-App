@@ -116,6 +116,12 @@ angular.module('Confess-Ctrl', [])
     $scope.set();
   };
 
+  /**
+   * Checks if secret should send its sender, recipient, date, and location
+   * @param opens modal and decides to search for images or display stock
+   * determines if new value is in the query and decides to not update
+   *
+   */
   let previousQuery;
 
   $scope.searchForImage = (query) => {

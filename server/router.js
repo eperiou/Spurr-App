@@ -27,7 +27,7 @@ const dbBlue = Bluebird.promisifyAll(db);
  * @param {String} table
  * @returns {Function} Promise from post request
  */
-router.post = function post(params, columns, table) {
+router.post = (params, columns, table) => {
   const attr = params.join("', '");
   const cols = columns.join(',');
   const query = `INSERT INTO ${table} (${cols}) VALUES ('${attr}')`;
@@ -44,7 +44,7 @@ router.post = function post(params, columns, table) {
  * @returns {Function} Promise from post request
  */
 
-router.postSpurr = function (req, res) {
+router.postSpurr = (req, res) => {
   const columns = Object.keys(req.body);
   const params = columns.reduce((arr, key) => arr.concat([req.body[key]]), []);
   router.post(params, columns, 'spurrs');
@@ -61,7 +61,7 @@ router.postSpurr = function (req, res) {
  * @returns {Function} Promise from post request
  */
 
-router.saveSpurr = function (req, res) {
+router.saveSpurr = (req, res) => {
   const query = `Select * FROM users WHERE username = '${req.body.user.data}'`;
   dbBlue.queryAsync(query)
     .then((rows) => {
@@ -86,7 +86,7 @@ router.saveSpurr = function (req, res) {
  * @param {Boolean} del
  * @returns {Function} Promise from get request
  */
-router.get = function get(table, limit, del, id) {
+router.get = (table, limit, del, id) => {
   const query = id ? `SELECT * FROM ${table} WHERE user_id = ${id} LIMIT ${limit}`
     : `SELECT * FROM ${table} ORDER BY spurr_id ASC LIMIT ${limit}`;
   return new Promise((resolve) => {
@@ -114,7 +114,7 @@ router.get = function get(table, limit, del, id) {
  * @param {Object} req
  * @param {Object} res
  */
-router.getSpurr = function (req, res) {
+router.getSpurr = (req, res) => {
   router.get('spurrs', 1, true)
   .then((data) => {
     res.status(200).send(data);
@@ -129,7 +129,7 @@ router.getSpurr = function (req, res) {
  * @param {Object} req
  * @param {Object} res
  */
-router.getSavedSpurrs = function (req, res) {
+router.getSavedSpurrs = (req, res) => {
   if (req.query.data) {
     const query = `Select * FROM users WHERE username = '${req.query.data}'`;
     dbBlue.queryAsync(query)
@@ -148,4 +148,46 @@ router.getSavedSpurrs = function (req, res) {
   }
 };
 
+
+
+router.getOauthToken = (req, res, next) => {
+  const parameters = {
+    method: 'POST',
+    url: 'https://connect.gettyimages.com/oauth2/token',
+    body: `grant_type=client_credentials&client_id=${process.env.GETTY_KEY}&client_secret=${process.env.GETTY_SECRET}`,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  };
+  rp(parameters)
+    .then((token) => {
+      const parseToken = JSON.parse(token).access_token;
+      process.env.GETTY_TOKEN = parseToken;
+      next();
+    })
+    .catch(err => console.err('ERROR:', err));
+}
+
+router.searchImages = (req, res) => {
+  const parameters = {
+    url: `https://api.gettyimages.com/v3/search/images?phrase=${req.query.data}`,
+    headers: {
+      'Api-Key': process.env.GETTY_KEY,
+      Authorization: `Bearer ${process.env.GETTY_TOKEN}`,
+    },
+    method: 'GET',
+  };
+  rp(parameters)
+    .then((images) => {
+      const parsedImages = JSON.parse(images).images;
+      const uris = parsedImages.reduce((accum, image) => {
+        accum.push({
+          id: image.id,
+          url: image.display_sizes[0].uri,
+        });
+        return accum;
+      }, []);
+      res.send(uris);
+    })
+    .catch(err => console.err('ERROR:', err));
 module.exports = router;
